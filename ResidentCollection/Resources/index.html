@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1E5F8E">
+<title>云上友谊</title>
+<script src="xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--primary:#1E5F8E;--primary-dark:#164870;--primary-light:#E8F0F7;--danger:#DC2626;--danger-dark:#B91C1C;--success:#16A34A;--bg:#F3F4F6;--card:#FFFFFF;--text:#1F2937;--text-secondary:#6B7280;--text-muted:#9CA3AF;--border:#E5E7EB;--radius:12px}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+
+/* ── 页面容器 ── */
+.page{display:none;min-height:100vh;flex-direction:column}
+.page.active{display:flex}
+
+/* ── 顶部导航栏 ── */
+.navbar{background:var(--primary);color:#fff;padding:env(safe-area-inset-top) 0 0;height:calc(56px + env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;padding-left:16px;padding-right:16px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.15)}
+.navbar__title{font-size:17px;font-weight:600;flex:1;text-align:center}
+.navbar__btn{background:transparent;border:none;color:#fff;font-size:15px;padding:8px 4px;cursor:pointer;min-width:56px;display:flex;align-items:center;gap:4px}
+.navbar__btn:active{opacity:0.7}
+.navbar__btn--save{background:rgba(255,255,255,0.15);border-radius:8px;padding:6px 16px;font-weight:500}
+.navbar__btn--back{justify-content:flex-start}
+
+/* ── 列表页 ── */
+.list-toolbar{background:var(--card);padding:12px 16px;display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.list-toolbar__count{font-size:13px;color:var(--text-secondary);margin-left:auto}
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;transition:all 0.15s;text-decoration:none}
+.btn:active{transform:scale(0.97)}
+.btn--primary{background:var(--primary);color:#fff}
+.btn--primary:active{background:var(--primary-dark)}
+.btn--outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn--outline:active{background:var(--bg)}
+.btn--danger{background:var(--danger);color:#fff}
+.btn--danger:active{background:var(--danger-dark)}
+.btn--success{background:var(--success);color:#fff}
+.btn--sm{padding:6px 12px;font-size:13px}
+.btn:disabled{opacity:0.45;cursor:not-allowed}
+
+.record-list{flex:1;overflow-y:auto;padding:12px 16px 80px}
+.record-card{background:var(--card);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.06);transition:all 0.15s}
+.record-card:active{transform:scale(0.98)}
+.record-card__header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.record-card__name{font-size:16px;font-weight:600;color:var(--text)}
+.record-card__role{font-size:12px;color:var(--primary);background:var(--primary-light);padding:2px 8px;border-radius:4px;margin-left:8px}
+.record-card__info{font-size:13px;color:var(--text-secondary);line-height:1.8}
+.record-card__info span{margin-right:12px}
+.record-card__actions{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.record-card__checkbox{width:22px;height:22px;accent-color:var(--primary);flex-shrink:0;margin-top:2px}
+
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;color:var(--text-muted)}
+.empty-state svg{width:56px;height:56px;margin-bottom:16px;opacity:0.4}
+.empty-state p{font-size:15px;margin-bottom:8px}
+.empty-state span{font-size:13px}
+
+/* ── 底部操作栏 ── */
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:flex;gap:10px;z-index:50;box-shadow:0 -2px 12px rgba(0,0,0,0.06)}
+.bottom-bar .btn{flex:1}
+
+/* ── 表单页 ── */
+.form-content{flex:1;overflow-y:auto;padding-bottom:80px}
+.form-section{background:var(--card);margin:10px 12px;border-radius:var(--radius);overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.form-section__title{font-size:14px;font-weight:600;color:var(--text);padding:12px 16px 6px;display:flex;align-items:center;gap:6px}
+.form-section__title::before{content:'';width:3px;height:14px;background:var(--primary);border-radius:2px}
+.form-section__grid{padding:6px 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:12px 12px}
+.form-field{display:flex;flex-direction:column;gap:4px}
+.form-field--full{grid-column:1/-1}
+.form-field label{font-size:12px;font-weight:500;color:var(--text-secondary)}
+.form-field input,.form-field select,.form-field textarea{padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);background:var(--card);transition:border-color 0.15s;font-family:inherit;width:100%;appearance:none;-webkit-appearance:none}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(30,95,142,0.1)}
+.form-field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;background-size:16px;padding-right:32px}
+.form-field textarea{resize:vertical;min-height:60px}
+.form-field--hint{font-size:11px;color:var(--text-muted);margin-top:2px}
+
+/* 身份证自动填充提示 */
+.auto-fill-badge{display:inline-block;font-size:11px;color:var(--success);background:#E8F5E9;padding:2px 6px;border-radius:4px;margin-left:6px}
+
+/* ── 弹窗 ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--card);border-radius:16px;width:100%;max-width:360px;overflow:hidden;animation:modalIn 0.2s ease}
+@keyframes modalIn{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}
+.modal__header{padding:16px 20px;border-bottom:1px solid var(--border);font-size:16px;font-weight:600}
+.modal__body{padding:20px;font-size:14px;line-height:1.6;color:var(--text-secondary)}
+.modal__footer{display:flex;gap:8px;padding:12px 20px;border-top:1px solid var(--border)}
+.modal__footer .btn{flex:1}
+
+/* ── Toast 提示 ── */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;padding:10px 24px;border-radius:8px;font-size:14px;z-index:300;animation:toastIn 0.2s ease;white-space:nowrap}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ── 导出选项弹窗 ── */
+.export-options{display:flex;flex-direction:column;gap:8px}
+.export-option{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.15s}
+.export-option:active{background:var(--bg)}
+.export-option svg{width:24px;height:24px;color:var(--primary);flex-shrink:0}
+.export-option__text{flex:1}
+.export-option__title{font-size:14px;font-weight:500;color:var(--text)}
+.export-option__desc{font-size:12px;color:var(--text-muted);margin-top:2px}
+
+/* 全选栏 */
+.select-all-bar{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--primary-light);font-size:13px;color:var(--primary)}
+.select-all-bar input{accent-color:var(--primary)}
+
+/* 已导出标记 */
+.exported-badge{font-size:11px;color:var(--success);background:#E8F5E9;padding:1px 6px;border-radius:4px;margin-left:6px}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ 列表页 ═══════════ -->
+<div id="page-list" class="page active">
+  <div class="navbar">
+    <button class="navbar__btn" onclick="showExportOptions()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      导出
+    </button>
+    <div class="navbar__title">常住居民采集</div>
+    <button class="navbar__btn" onclick="showForm()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      新增
+    </button>
+  </div>
+
+  <div class="list-toolbar">
+    <button class="btn btn--danger btn--sm" id="delete-btn" onclick="deleteSelected()" disabled>删除选中</button>
+    <button class="btn btn--outline btn--sm" onclick="selectAllToggle()" id="select-all-btn">全选</button>
+    <span class="list-toolbar__count" id="record-count">0 条记录</span>
+  </div>
+
+  <div class="select-all-bar" id="select-all-bar" style="display:none">
+    <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this.checked)">
+    <span id="selected-count">已选 0 条</span>
+  </div>
+
+  <div class="record-list" id="record-list">
+    <!-- 动态渲染 -->
+  </div>
+</div>
+
+<!-- ═══════════ 表单页 ═══════════ -->
+<div id="page-form" class="page">
+  <div class="navbar">
+    <button class="navbar__btn navbar__btn--back" onclick="confirmBack()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      返回
+    </button>
+    <div class="navbar__title" id="form-title">新增居民</div>
+    <button class="navbar__btn navbar__btn--save" onclick="saveRecord()">保存</button>
+  </div>
+
+  <div class="form-content">
+    <!-- 区域信息 -->
+    <div class="form-section">
+      <div class="form-section__title">区域信息</div>
+      <div class="form-section__grid">
+        <div class="form-field"><label>县（市）区</label><input type="text" id="f-district" placeholder="如：彭阳区"></div>
+        <div class="form-field"><label>乡镇（街道）名称</label><input type="text" id="f-town_street" placeholder="如：白阳镇"></div>
+        <div class="form-field form-field--full"><label>村（社区）名称</label><input type="text" id="f-village_community" placeholder="如：友谊街社区"></div>
+      </div>
+    </div>
+
+    <!-- 房屋信息 -->
+    <div class="form-section">
+      <div class="form-section__title">房屋信息</div>
+      <div class="form-section__grid">
+        <div class="form-field form-field--full"><label>小区（队）、独立建筑名称</label><input type="text" id="f-community" placeholder="如：宁馨花园"></div>
+        <div class="form-field">
+          <label>类型</label>
+          <select id="f-building_type"><option value="">请选择</option></select>
+        </div>
+        <div class="form-field">
+          <label>所属网格</label>
+          <select id="f-grid"><option value="">请选择</option></select>
+        </div>
+        <div class="form-field form-field--full">
+          <label>楼号-单元号-门牌号</label>
+          <input type="text" id="f-room_number" placeholder="如：19-2-201 或 A-401">
+          <span class="form-field--hint">格式：楼号-单元号-门牌号，如 19-2-201</span>
+        </div>
+        <div class="form-field">
+          <label>房间状态</label>
+          <select id="f-room_status"><option value="">请选择</option></select>
+        </div>
+        <div class="form-field">
+          <label>居住类型</label>
+          <select id="f-living_type"><option value="">请选择</option></select>
+        </div>
+        <div class="form-field">
+          <label>是否租户</label>
+          <select id="f-is_tenant"><option value="否">否</option><option value="是">是</option></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 人员基本信息 -->
+    <div class="form-section">
+      <div class="form-section__title">人员基本信息</div>
+      <div class="form-section__grid">
+        <div class="form-field"><label>姓名</label><input type="text" id="f-name" placeholder="空置房屋可留空"></div>
+        <div class="form-field"><label>性别</label><select id="f-gender"><option value="">请选择</option><option value="男">男</option><option value="女">女</option></select></div>
+        <div class="form-field"><label>年龄</label><input type="number" id="f-age" min="0" max="150" placeholder="自动计算"><span class="form-field--hint" id="age-hint">填身份证后自动计算</span></div>
+        <div class="form-field"><label>民族</label><select id="f-ethnicity"><option value="">请选择</option></select></div>
+        <div class="form-field form-field--full"><label>身份证号</label><input type="text" id="f-id_number" maxlength="18" placeholder="18位身份证号" oninput="onIdNumberInput()"></div>
+        <div class="form-field form-field--full"><label>手机号</label><input type="tel" id="f-phone" placeholder="手机号码"></div>
+        <div class="form-field">
+          <label>与户主关系</label>
+          <select id="f-family_role"><option value="">请选择</option></select>
+        </div>
+        <div class="form-field">
+          <label>学历</label>
+          <select id="f-education"><option value="">请选择</option></select>
+        </div>
+        <div class="form-field">
+          <label>政治面貌</label>
+          <select id="f-political_status"><option value="">请选择</option></select>
+        </div>
+        <div class="form-field">
+          <label>宗教信仰</label>
+          <select id="f-religion"><option value="">请选择</option></select>
+        </div>
+        <div class="form-field">
+          <label>婚姻状况</label>
+          <select id="f-marital_status"><option value="">请选择</option></select>
+        </div>
+        <div class="form-field">
+          <label>是否学生</label>
+          <select id="f-is_student"><option value="">请选择</option><option value="否">否</option><option value="是">是</option></select>
+        </div>
+        <div class="form-field form-field--full"><label>年级</label><input type="text" id="f-grade" placeholder="如：三年级"></div>
+      </div>
+    </div>
+
+    <!-- 户籍信息 -->
+    <div class="form-section">
+      <div class="form-section__title">户籍信息</div>
+      <div class="form-section__grid">
+        <div class="form-field">
+          <label>是否户籍居民</label>
+          <select id="f-household_resident"><option value="">请选择</option><option value="是">是</option><option value="否">否</option></select>
+        </div>
+        <div class="form-field">
+          <label>户籍性质</label>
+          <select id="f-household_type"><option value="">请选择</option><option value="农业">农业</option><option value="非农业">非农业</option></select>
+        </div>
+        <div class="form-field form-field--full"><label>户籍地</label><input type="text" id="f-household_address" placeholder="户籍地址"></div>
+        <div class="form-field form-field--full">
+          <label>户属性</label>
+          <select id="f-household_category"><option value="">请选择</option></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 就业信息 -->
+    <div class="form-section">
+      <div class="form-section__title">就业信息</div>
+      <div class="form-section__grid">
+        <div class="form-field"><label>就业时间</label><input type="text" id="f-employment_time" placeholder="如：202601"></div>
+        <div class="form-field">
+          <label>就业区域</label>
+          <select id="f-employment_region"><option value="">请选择</option><option value="县内">县内</option><option value="县外区内">县外区内</option><option value="区外">区外</option></select>
+        </div>
+        <div class="form-field"><label>就业省</label><input type="text" id="f-employment_province" placeholder="如：宁夏"></div>
+        <div class="form-field"><label>就业市</label><input type="text" id="f-employment_city" placeholder="如：固原市"></div>
+        <div class="form-field"><label>就业县</label><input type="text" id="f-employment_county" placeholder="如：彭阳县"></div>
+        <div class="form-field form-field--full"><label>就业单位及岗位</label><input type="text" id="f-employment_unit" placeholder="如：某科技公司-技术员"></div>
+      </div>
+    </div>
+
+    <!-- 保障信息 -->
+    <div class="form-section">
+      <div class="form-section__title">保障信息</div>
+      <div class="form-section__grid">
+        <div class="form-field"><label>低保救助</label><input type="text" id="f-low_income" placeholder="如：否、城市低保等" value="否"></div>
+        <div class="form-field"><label>残疾详情</label><input type="text" id="f-disability" placeholder="如：否、视力残疾一级等"></div>
+        <div class="form-field form-field--full"><label>大慢病</label><input type="text" id="f-chronic_disease" placeholder="如：高血压、糖尿病等"></div>
+      </div>
+    </div>
+
+    <!-- 标签与备注 -->
+    <div class="form-section">
+      <div class="form-section__title">标签与备注</div>
+      <div class="form-section__grid">
+        <div class="form-field form-field--full"><label>标签（英文逗号分隔）</label><input type="text" id="f-tags" placeholder="如：重点关注,走访对象"></div>
+        <div class="form-field form-field--full"><label>备注</label><textarea id="f-notes" rows="2" placeholder="备注信息"></textarea></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ 弹窗容器 ═══════════ -->
+<div id="modal-container"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// 常量定义 — 与社区系统完全一致
+// ═══════════════════════════════════════════════════════════════
+
+// Excel 表头（中文标题 → 字段名）— 必须与社区系统 RESIDENT_TEMPLATE_HEADERS 完全一致
+const HEADERS = [
+  ['县（市）区','district'], ['乡镇（街道）名称','town_street'], ['村（社区）名称','village_community'],
+  ['小区（队）、独立建筑名称','community'], ['类型','building_type'], ['楼号-单元号-门牌号','room_number'],
+  ['与户主关系','family_role'], ['是否租户','is_tenant'],
+  ['姓名','name'], ['性别','gender'], ['年龄','age'],
+  ['证件号码','id_number'], ['手机号','phone'],
+  ['是否户籍居民','household_resident'], ['户籍地','household_address'],
+  ['政治面貌','political_status'], ['宗教信仰','religion'],
+  ['学历','education'], ['婚姻状况','marital_status'],
+  ['民族','ethnicity'], ['户属性','household_category'],
+  ['就业时间','employment_time'], ['就业区域','employment_region'],
+  ['就业省','employment_province'], ['就业市','employment_city'],
+  ['就业县','employment_county'], ['就业单位及岗位','employment_unit'],
+  ['是否低保','low_income'], ['是否残疾','disability'], ['是否大慢病','chronic_disease'],
+  ['是否学生','is_student'], ['年级','grade'],
+  ['标签(英文逗号分开)','tags'],
+  ['房间状态','room_status'], ['居住类型','living_type'],
+  ['所属网格','grid'],
+  ['备注','notes'],
+];
+
+// 列宽 — 与社区系统 RESIDENT_TEMPLATE_WIDTHS 一致
+const COL_WIDTHS = [12,14,14,22,8,18,10,8,10,6,6,20,12,10,20,10,10,10,10,10,14,10,10,8,8,8,18,8,8,8,8,8,16,10,10,12,16];
+
+// 下拉选项 — 与社区系统 constants.py 完全一致
+const OPTIONS = {
+  building_type: ['住宅','商铺','办公','车库','独栋','小区','其他'],
+  room_status: ['自住','空置','出租','其他'],
+  living_type: ['常住','空置','偶尔居住','其他'],
+  grid: ['第一网格','第二网格','第三网格','第四网格','第五网格','第六网格','第七网格','第八网格','第九网格','第十网格','第十一网格','第十二网格'],
+  family_role: ['户主','配偶','长子','次子','三子','四子','长女','次女','三女','四女','长儿媳','次儿媳','长女婿','次女婿','孙子','孙女','外孙','外孙女','父亲','母亲','岳父','岳母','公公','婆婆','祖父','祖母','外祖父','外祖母','兄长','弟弟','姐姐','妹妹','其他亲属','非亲属'],
+  ethnicity: ['汉族','蒙古族','回族','藏族','维吾尔族','苗族','彝族','壮族','布依族','朝鲜族','满族','侗族','瑶族','白族','土家族','哈尼族','哈萨克族','傣族','黎族','傈僳族','佤族','畲族','高山族','拉祜族','水族','东乡族','纳西族','景颇族','柯尔克孜族','土族','达斡尔族','仫佬族','羌族','布朗族','撒拉族','毛南族','仡佬族','锡伯族','阿昌族','普米族','塔吉克族','怒族','乌孜别克族','俄罗斯族','鄂温克族','德昂族','保安族','裕固族','京族','塔塔尔族','独龙族','鄂伦春族','赫哲族','门巴族','珞巴族','基诺族'],
+  education: ['小学','初中','高中','大专','大学本科','硕士','博士'],
+  political_status: ['党员','群众','团员','其他民间党团组织'],
+  religion: ['无','佛教','道教','伊斯兰教','天主教','基督教','其他'],
+  marital_status: ['未婚','已婚','离异','丧偶','未知'],
+  household_category: ['一般户','脱贫户','脱贫不享受政策户','监测户（已退出监测）','监测户（边缘易致贫户）','监测户（突发严重困难户）','脱贫户（脱贫不稳定户）'],
+};
+
+// 表单字段列表（用于读取/清空）
+const FORM_FIELDS = HEADERS.map(([_, f]) => f);
+
+// 同住人需要复制的地址相关字段
+const ADDRESS_FIELDS = [
+  'district', 'town_street', 'village_community',
+  'community', 'building_type', 'room_number',
+  'room_status', 'living_type', 'grid', 'is_tenant'
+];
+
+// ═══════════════════════════════════════════════════════════════
+// 数据存储
+// ═══════════════════════════════════════════════════════════════
+const STORAGE_KEY = 'resident_records';
+let records = [];
+let editingId = null;
+let selectedIds = new Set();
+
+function loadRecords() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    records = data ? JSON.parse(data) : [];
+  } catch { records = []; }
+}
+
+function saveRecords() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 初始化下拉选项
+// ═══════════════════════════════════════════════════════════════
+function initSelects() {
+  for (const [field, opts] of Object.entries(OPTIONS)) {
+    const el = document.getElementById('f-' + field);
+    if (!el) continue;
+    for (const opt of opts) {
+      const o = document.createElement('option');
+      o.value = opt; o.textContent = opt;
+      el.appendChild(o);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 身份证号自动计算性别和年龄
+// ═══════════════════════════════════════════════════════════════
+function onIdNumberInput() {
+  const idn = document.getElementById('f-id_number').value.trim();
+  const ageHint = document.getElementById('age-hint');
+  if (idn.length === 18) {
+    // 性别：第17位奇数=男，偶数=女
+    const genderNum = parseInt(idn[16]);
+    if (!isNaN(genderNum)) {
+      const gender = genderNum % 2 === 1 ? '男' : '女';
+      document.getElementById('f-gender').value = gender;
+    }
+    // 年龄：第7-14位是出生日期
+    const year = parseInt(idn.substring(6, 10));
+    const month = parseInt(idn.substring(10, 12));
+    const day = parseInt(idn.substring(12, 14));
+    if (year > 1900 && year < 2100) {
+      const now = new Date();
+      let age = now.getFullYear() - year;
+      if (now.getMonth() + 1 < month || (now.getMonth() + 1 === month && now.getDate() < day)) {
+        age--;
+      }
+      if (age >= 0 && age <= 150) {
+        document.getElementById('f-age').value = age;
+        ageHint.textContent = '已从身份证自动计算';
+      }
+    }
+  } else {
+    ageHint.textContent = '填身份证后自动计算';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 页面切换
+// ═══════════════════════════════════════════════════════════════
+function showPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function showList() {
+  showPage('page-list');
+  renderList();
+}
+
+function showForm(id) {
+  editingId = id || null;
+  clearForm();
+  document.getElementById('form-title').textContent = id ? '编辑居民' : '新增居民';
+
+  // 设置默认值
+  document.getElementById('f-is_tenant').value = '否';
+  document.getElementById('f-low_income').value = '否';
+  document.getElementById('f-living_type').value = '常住';
+  document.getElementById('f-ethnicity').value = '汉族';
+
+  if (id) {
+    const rec = records.find(r => r._id === id);
+    if (rec) {
+      for (const field of FORM_FIELDS) {
+        const el = document.getElementById('f-' + field);
+        if (el && rec[field] !== undefined && rec[field] !== null) {
+          el.value = rec[field];
+        }
+      }
+    }
+  }
+  showPage('page-form');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 添加同住人 — 复制地址信息，人员信息留空
+// ═══════════════════════════════════════════════════════════════
+let lastSavedAddressId = null; // 记录最后一次保存的记录ID，用于“继续添加同住人”
+
+function showFormSameAddress(id) {
+  const rec = records.find(r => r._id === id);
+  if (!rec) return;
+
+  editingId = null;
+  clearForm();
+  document.getElementById('form-title').textContent = '添加同住人';
+
+  // 设置默认值
+  document.getElementById('f-is_tenant').value = '否';
+  document.getElementById('f-low_income').value = '否';
+  document.getElementById('f-living_type').value = '常住';
+  document.getElementById('f-ethnicity').value = '汉族';
+
+  // 复制地址相关字段
+  for (const field of ADDRESS_FIELDS) {
+    const el = document.getElementById('f-' + field);
+    if (el && rec[field] !== undefined && rec[field] !== null) {
+      el.value = rec[field];
+    }
+  }
+
+  showPage('page-form');
+
+  // 提示用户地址已复制
+  showToast('已复制住址信息，请填写人员信息');
+
+  // 自动滚动到人员基本信息部分
+  setTimeout(() => {
+    const nameField = document.getElementById('f-name');
+    if (nameField) nameField.focus();
+  }, 300);
+}
+
+function confirmBack() {
+  // 检查表单是否有内容
+  const hasContent = FORM_FIELDS.some(f => {
+    const el = document.getElementById('f-' + f);
+    return el && el.value && el.value.trim();
+  });
+  if (hasContent) {
+    showModal('确认返回', '当前表单有未保存的内容，确定要返回吗？返回后内容将丢失。', [
+      { text: '继续编辑', style: 'outline' },
+      { text: '确定返回', style: 'danger', onClick: () => { showList(); } },
+    ]);
+  } else {
+    showList();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 表单操作
+// ═══════════════════════════════════════════════════════════════
+function clearForm() {
+  for (const field of FORM_FIELDS) {
+    const el = document.getElementById('f-' + field);
+    if (el) el.value = '';
+  }
+}
+
+function getFormData() {
+  const data = {};
+  for (const field of FORM_FIELDS) {
+    const el = document.getElementById('f-' + field);
+    if (el) {
+      data[field] = el.value.trim();
+    }
+  }
+  // 年龄转数字
+  if (data.age) {
+    data.age = parseInt(data.age) || '';
+  }
+  return data;
+}
+
+function saveRecord() {
+  const data = getFormData();
+
+  // 验证：姓名和房间号至少有一个
+  if (!data.name && !data.room_number && !data.community) {
+    showToast('请至少填写姓名或房屋信息');
+    return;
+  }
+
+  // 身份证号验证
+  if (data.id_number) {
+    const idn = data.id_number.replace(/[\s\-]/g, '');
+    if (idn.length !== 18) {
+      showModal('身份证号格式错误', '身份证号必须是18位，当前为 ' + idn.length + ' 位。', [
+        { text: '知道了', style: 'primary' },
+      ]);
+      return;
+    }
+    data.id_number = idn;
+  }
+
+  // 从 room_number 解析 building/unit/room
+  if (data.room_number) {
+    const parts = data.room_number.split('-').map(s => s.trim());
+    if (parts.length >= 3) {
+      // building-unit-room
+    } else if (parts.length === 2) {
+      // building-room
+    }
+  }
+
+  if (editingId) {
+    // 编辑模式
+    const idx = records.findIndex(r => r._id === editingId);
+    if (idx >= 0) {
+      data._id = editingId;
+      data._created = records[idx]._created;
+      data._exported = records[idx]._exported || false;
+      records[idx] = data;
+    }
+  } else {
+    // 新增模式
+    data._id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+    data._created = new Date().toISOString();
+    data._exported = false;
+    records.unshift(data);
+  }
+
+  saveRecords();
+
+  // 保存成功后，如果记录有地址信息，弹出选择：返回列表 or 继续添加同住人
+  const hasAddress = data.community || data.room_number;
+  if (hasAddress) {
+    lastSavedAddressId = data._id;
+    showModal('保存成功', '记录已保存。是否继续添加该住址的同住人？', [
+      { text: '返回列表', style: 'outline', onClick: () => { showList(); } },
+      { text: '添加同住人', style: 'primary', onClick: () => { showFormSameAddress(data._id); } },
+    ]);
+  } else {
+    showToast(editingId ? '已更新' : '已保存');
+    setTimeout(() => showList(), 600);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 列表渲染
+// ═══════════════════════════════════════════════════════════════
+function renderList() {
+  const container = document.getElementById('record-list');
+  const countEl = document.getElementById('record-count');
+  countEl.textContent = records.length + ' 条记录';
+
+  if (records.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+          <path d="M16 3.13a4 4 0 010 7.75"/>
+        </svg>
+        <p>暂无居民数据</p>
+        <span>点击右上角"新增"开始采集</span>
+      </div>`;
+    updateDeleteBtn();
+    return;
+  }
+
+  let html = '';
+  for (const rec of records) {
+    const isSelected = selectedIds.has(rec._id);
+    const name = rec.name || '(空置房屋)';
+    const role = rec.family_role || '';
+    const exportedBadge = rec._exported ? '<span class="exported-badge">已导出</span>' : '';
+
+    html += `
+      <div class="record-card" onclick="event.stopPropagation()">
+        <div class="record-card__header">
+          <div>
+            <input type="checkbox" class="record-card__checkbox" ${isSelected ? 'checked' : ''} onchange="toggleSelect('${rec._id}', this.checked)">
+            <span class="record-card__name">${escapeHtml(name)}</span>
+            ${role ? '<span class="record-card__role">' + escapeHtml(role) + '</span>' : ''}
+            ${exportedBadge}
+          </div>
+        </div>
+        <div class="record-card__info">
+          ${rec.community ? '<span>📍 ' + escapeHtml(rec.community) + '</span>' : ''}
+          ${rec.room_number ? '<span>' + escapeHtml(rec.room_number) + '</span>' : ''}
+          ${rec.phone ? '<span>📱 ' + escapeHtml(rec.phone) + '</span>' : ''}
+          ${rec.id_number ? '<span>🆔 ' + escapeHtml(rec.id_number.substring(0,6) + '********' + rec.id_number.substring(14)) + '</span>' : ''}
+          ${rec.living_type ? '<span>🏠 ' + escapeHtml(rec.living_type) + '</span>' : ''}
+        </div>
+        <div class="record-card__actions">
+          <button class="btn btn--primary btn--sm" onclick="event.stopPropagation(); showFormSameAddress('${rec._id}')">+同住人</button>
+          <button class="btn btn--outline btn--sm" onclick="event.stopPropagation(); showForm('${rec._id}')">编辑</button>
+          <button class="btn btn--danger btn--sm" onclick="event.stopPropagation(); deleteRecord('${rec._id}')">删除</button>
+        </div>
+      </div>`;
+  }
+  container.innerHTML = html;
+  updateDeleteBtn();
+  updateSelectedCount();
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 选择操作
+// ═══════════════════════════════════════════════════════════════
+function toggleSelect(id, checked) {
+  if (checked) {
+    selectedIds.add(id);
+  } else {
+    selectedIds.delete(id);
+  }
+  updateDeleteBtn();
+  updateSelectedCount();
+}
+
+function updateDeleteBtn() {
+  const btn = document.getElementById('delete-btn');
+  btn.disabled = selectedIds.size === 0;
+  btn.textContent = selectedIds.size > 0 ? `删除选中(${selectedIds.size})` : '删除选中';
+}
+
+function updateSelectedCount() {
+  const bar = document.getElementById('select-all-bar');
+  const countEl = document.getElementById('selected-count');
+  if (selectedIds.size > 0) {
+    bar.style.display = 'flex';
+    countEl.textContent = `已选 ${selectedIds.size} 条`;
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function toggleSelectAll(checked) {
+  if (checked) {
+    records.forEach(r => selectedIds.add(r._id));
+  } else {
+    selectedIds.clear();
+  }
+  renderList();
+}
+
+function selectAllToggle() {
+  if (selectedIds.size === records.length && records.length > 0) {
+    selectedIds.clear();
+  } else {
+    records.forEach(r => selectedIds.add(r._id));
+  }
+  renderList();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 删除操作
+// ═══════════════════════════════════════════════════════════════
+function deleteRecord(id) {
+  const rec = records.find(r => r._id === id);
+  if (!rec) return;
+  const name = rec.name || '该空置房屋记录';
+  showModal('确认删除', `确定要删除「${escapeHtml(name)}」的记录吗？此操作不可撤销。`, [
+    { text: '取消', style: 'outline' },
+    { text: '确认删除', style: 'danger', onClick: () => {
+      records = records.filter(r => r._id !== id);
+      selectedIds.delete(id);
+      saveRecords();
+      renderList();
+      showToast('已删除');
+    }},
+  ]);
+}
+
+function deleteSelected() {
+  if (selectedIds.size === 0) return;
+  showModal('确认批量删除', `确定要删除选中的 ${selectedIds.size} 条记录吗？此操作不可撤销。`, [
+    { text: '取消', style: 'outline' },
+    { text: '确认删除', style: 'danger', onClick: () => {
+      records = records.filter(r => !selectedIds.has(r._id));
+      selectedIds.clear();
+      saveRecords();
+      renderList();
+      showToast('已批量删除');
+    }},
+  ]);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Excel 导出
+// ═══════════════════════════════════════════════════════════════
+function showExportOptions() {
+  if (records.length === 0) {
+    showToast('暂无记录可导出');
+    return;
+  }
+
+  const unexportedCount = records.filter(r => !r._exported).length;
+  const selectedCount = selectedIds.size;
+
+  let optionsHtml = `
+    <div class="export-options">
+      <div class="export-option" onclick="exportExcel('unexported')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div class="export-option__text">
+          <div class="export-option__title">导出未导出记录 ${unexportedCount > 0 ? `(${unexportedCount}条)` : ''}</div>
+          <div class="export-option__desc">只导出还没有导出过的记录</div>
+        </div>
+      </div>
+      <div class="export-option" onclick="exportExcel('all')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div class="export-option__text">
+          <div class="export-option__title">导出全部记录 (${records.length}条)</div>
+          <div class="export-option__desc">导出所有已保存的记录</div>
+        </div>
+      </div>`;
+
+  if (selectedCount > 0) {
+    optionsHtml += `
+      <div class="export-option" onclick="exportExcel('selected')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div class="export-option__text">
+          <div class="export-option__title">导出选中记录 (${selectedCount}条)</div>
+          <div class="export-option__desc">只导出当前勾选的记录</div>
+        </div>
+      </div>`;
+  }
+
+  optionsHtml += '</div>';
+
+  const modalContainer = document.getElementById('modal-container');
+  modalContainer.innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal">
+        <div class="modal__header">导出 Excel</div>
+        <div class="modal__body">${optionsHtml}</div>
+        <div class="modal__footer">
+          <button class="btn btn--outline" onclick="closeModal()">取消</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function exportExcel(type) {
+  let exportRecords;
+  if (type === 'unexported') {
+    exportRecords = records.filter(r => !r._exported);
+  } else if (type === 'selected') {
+    exportRecords = records.filter(r => selectedIds.has(r._id));
+  } else {
+    exportRecords = [...records];
+  }
+
+  if (exportRecords.length === 0) {
+    closeModal();
+    showToast('没有可导出的记录');
+    return;
+  }
+
+  // 构建表头行
+  const headerLabels = HEADERS.map(([label]) => label);
+
+  // 构建数据行
+  const dataRows = exportRecords.map(rec => {
+    return HEADERS.map(([_, field]) => {
+      let val = rec[field];
+      if (val === undefined || val === null) return '';
+      // 年龄转数字
+      if (field === 'age' && val !== '') {
+        return Number(val);
+      }
+      return String(val);
+    });
+  });
+
+  // 合并表头+数据
+  const aoa = [headerLabels, ...dataRows];
+
+  // 创建工作表
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  // 设置列宽
+  ws['!cols'] = COL_WIDTHS.map(w => ({ wch: w }));
+
+  // 冻结首行
+  ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+  // 创建工作簿
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '居民信息');
+
+  // 生成文件名
+  const now = new Date();
+  const dateStr = now.getFullYear() +
+    String(now.getMonth() + 1).padStart(2, '0') +
+    String(now.getDate()).padStart(2, '0') + '_' +
+    String(now.getHours()).padStart(2, '0') +
+    String(now.getMinutes()).padStart(2, '0');
+  const filename = `居民信息_${dateStr}.xlsx`;
+
+  // 生成并下载
+  try {
+    // 标记已导出
+    if (type === 'unexported' || type === 'all') {
+      const exportIds = new Set(exportRecords.map(r => r._id));
+      records.forEach(r => {
+        if (exportIds.has(r._id)) {
+          r._exported = true;
+        }
+      });
+      saveRecords();
+    }
+
+    if (window.Android && window.Android.saveExcelFile) {
+      // Android WebView 环境：通过 JS 桥接传 base64 数据由 Java 端保存
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+      window.Android.saveExcelFile(wbout, filename);
+    } else {
+      // 浏览器环境：使用 Blob URL 下载
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    closeModal();
+    showToast(`已导出 ${exportRecords.length} 条记录`);
+    setTimeout(() => renderList(), 800);
+  } catch (e) {
+    showModal('导出失败', '生成Excel文件时出错：' + e.message, [
+      { text: '知道了', style: 'primary' },
+    ]);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 弹窗系统
+// ═══════════════════════════════════════════════════════════════
+function showModal(title, message, buttons) {
+  const modalContainer = document.getElementById('modal-container');
+  let btnsHtml = '';
+  for (const btn of buttons) {
+    const styleClass = btn.style === 'danger' ? 'btn--danger' :
+                       btn.style === 'primary' ? 'btn--primary' : 'btn--outline';
+    btnsHtml += `<button class="btn ${styleClass}" data-action="${btn.text}">${btn.text}</button>`;
+  }
+
+  modalContainer.innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal">
+        <div class="modal__header">${escapeHtml(title)}</div>
+        <div class="modal__body">${escapeHtml(message)}</div>
+        <div class="modal__footer">${btnsHtml}</div>
+      </div>
+    </div>`;
+
+  // 绑定按钮事件
+  modalContainer.querySelectorAll('[data-action]').forEach((el, i) => {
+    el.onclick = () => {
+      const btn = buttons[i];
+      closeModal();
+      if (btn.onClick) btn.onClick();
+    };
+  });
+}
+
+function closeModal() {
+  document.getElementById('modal-container').innerHTML = '';
+}
+
+// Toast 提示
+let toastTimer = null;
+function showToast(message) {
+  if (toastTimer) clearTimeout(toastTimer);
+  let toast = document.querySelector('.toast');
+  if (toast) toast.remove();
+  toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  toastTimer = setTimeout(() => {
+    toast.remove();
+  }, 2500);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 初始化
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  initSelects();
+  loadRecords();
+  renderList();
+});
+
+// 阻止双击缩放
+document.addEventListener('dblclick', (e) => e.preventDefault());
+
+// 阻止多指缩放
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+</script>
+</body>
+</html>
