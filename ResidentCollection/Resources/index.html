@@ -874,17 +874,25 @@ function exportExcel(type) {
       const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
       window.Android.saveExcelFile(wbout, filename);
     } else {
-      // 浏览器环境：使用 Blob URL 下载
+      // 浏览器环境
       const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([wbout], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      const file = new File([wbout], filename, { type: mimeType });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        // iOS Safari：调用系统分享面板（可存储到"文件"、发微信、AirDrop 等）
+        navigator.share({ files: [file] }).catch(() => {});
+      } else {
+        // 桌面浏览器：使用 Blob URL 下载
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
     }
 
     closeModal();
